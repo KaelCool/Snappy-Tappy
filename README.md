@@ -39,7 +39,7 @@ tool unless you have confirmed otherwise yourself.
 
 ## Installing
 
-Download `myapp.exe` from the [Releases page](../../releases) and run it. There
+Download `SnapTap.exe` from the [Releases page](../../releases) and run it. There
 is no installer and nothing is written outside the folder you put it in.
 
 Windows SmartScreen will warn that the publisher is unknown, because the binary
@@ -87,7 +87,7 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-The executable lands in `build\Release\myapp.exe`.
+The executable lands in `build\Release\SnapTap.exe`.
 
 To run the tests:
 

@@ -1,3 +1,4 @@
+#include "snap_tap/app_paths.h"
 #include "snap_tap/config.h"
 #include "snap_tap/engine.h"
 #include "snap_tap/key_codes.h"
@@ -145,7 +146,7 @@ void setEnabled(KeyboardHook& hook, const bool enabled) {
 }  // namespace
 
 int main() {
-    const std::filesystem::path configPath = std::filesystem::absolute(kConfigFileName);
+    const std::filesystem::path configPath = executableDirectory() / kConfigFileName;
     const ParseResult loaded = loadConfigFile(configPath.string());
     for (const std::string& error : loaded.errors) {
         std::cout << "Config warning (" << configPath.string() << ") " << error << "\n";

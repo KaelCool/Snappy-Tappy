@@ -15,6 +15,7 @@ target_include_directories(snaptap_core PUBLIC src)
 # The Win32 layer is linked only into the app, never into the tests.
 add_executable(myapp
     src/main.cpp
+    src/snap_tap/app_paths.cpp
     src/snap_tap/keyboard_hook.cpp
 )
 target_link_libraries(myapp PRIVATE snaptap_core)

@@ -58,6 +58,12 @@ private:
     void createControls();
     void applyLayout();
 
+    // Rebuilds the fonts and layout for a new DPI and resizes the window to
+    // match. The suggested rect is what Windows offers on a DPI change, whose
+    // position is honoured and whose size is not: the size comes from the
+    // layout. Pass nullptr to keep the window where it is.
+    void applyDpi(int newDpi, std::size_t pairCount, const void* suggested);
+
     // Recomputes the layout for the current pair count, resizes the window and
     // repositions every control.
     void rebuildLayout();

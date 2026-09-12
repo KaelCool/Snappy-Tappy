@@ -48,6 +48,33 @@ constexpr DWORD kUseImmersiveDarkModeLegacy = 19;
 constexpr DWORD kWindowCornerPreference = 33;
 constexpr DWORD kCornerPreferenceRound = 2;
 
+// Sent when the window moves to a monitor with different scaling. Spelled out
+// because the SDK guards it behind a newer target.
+constexpr UINT kDpiChanged = 0x02E0;
+
+// GetDpiForWindow is Windows 10 1607 and later; before that every monitor
+// shares the primary one's scaling, which is what the desktop DC reports.
+int dpiForWindow(const HWND hwnd) {
+    using GetDpi = UINT(WINAPI*)(HWND);
+    const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    if (user32 != nullptr) {
+        const auto getDpi = reinterpret_cast<GetDpi>(GetProcAddress(user32, "GetDpiForWindow"));
+        if (getDpi != nullptr) {
+            const UINT dpi = getDpi(hwnd);
+            if (dpi != 0) {
+                return static_cast<int>(dpi);
+            }
+        }
+    }
+    int dpi = 96;
+    const HDC screen = GetDC(nullptr);
+    if (screen != nullptr) {
+        dpi = GetDeviceCaps(screen, LOGPIXELSX);
+        ReleaseDC(nullptr, screen);
+    }
+    return dpi;
+}
+
 Rect toRect(const RECT& rect) {
     return Rect{rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top};
 }
@@ -196,6 +223,11 @@ bool MainWindow::create() {
     SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
+    // CW_USEDEFAULT means the monitor was not known until now, so the fonts and
+    // layout above were built at the system DPI. Redo them if this monitor
+    // scales differently; no control exists yet, so nothing else has to move.
+    applyDpi(dpiForWindow(hwnd), pairCount, nullptr);
+
     if (icon_->largeIcon() != nullptr) {
         SendMessageW(hwnd, WM_SETICON, ICON_BIG,
                      reinterpret_cast<LPARAM>(icon_->largeIcon()));
@@ -282,6 +314,46 @@ void MainWindow::applyLayout() {
     const int droppedHeight = layout_.firstPicker.height + scaleForDpi(220, dpi_);
     place(kIdFirstPicker, layout_.firstPicker, droppedHeight);
     place(kIdSecondPicker, layout_.secondPicker, droppedHeight);
+}
+
+void MainWindow::applyDpi(const int newDpi, const std::size_t pairCount,
+                          const void* const suggested) {
+    const HWND hwnd = static_cast<HWND>(hwnd_);
+    if (newDpi <= 0 || newDpi == dpi_) {
+        return;
+    }
+    dpi_ = newDpi;
+    fonts_ = std::make_unique<Fonts>(dpi_);
+    layout_ = computeLayout(dpi_, pairCount);
+
+    if (suggested != nullptr) {
+        const RECT& target = *static_cast<const RECT*>(suggested);
+        SetWindowPos(hwnd, nullptr, target.left, target.top, layout_.windowWidth,
+                     layout_.windowHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+    } else {
+        SetWindowPos(hwnd, nullptr, 0, 0, layout_.windowWidth, layout_.windowHeight,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
+    // Nothing below exists yet when this runs from create().
+    if (control(hwnd, kIdPairList) == nullptr) {
+        return;
+    }
+
+    // Owner-drawn rows are measured once, when the control is created, so the
+    // new heights have to be pushed in rather than waiting for WM_MEASUREITEM.
+    SendMessageW(control(hwnd, kIdPairList), LB_SETITEMHEIGHT, 0,
+                 static_cast<LPARAM>(layout_.pairRowHeight));
+    const int itemHeight = scaleForDpi(28, dpi_);
+    for (const int id : {kIdFirstPicker, kIdSecondPicker}) {
+        const HWND picker = control(hwnd, id);
+        SendMessageW(picker, CB_SETITEMHEIGHT, 0, static_cast<LPARAM>(itemHeight));
+        SendMessageW(picker, CB_SETITEMHEIGHT, static_cast<WPARAM>(-1),
+                     static_cast<LPARAM>(layout_.firstPicker.height));
+    }
+
+    applyLayout();
+    InvalidateRect(hwnd, nullptr, TRUE);
 }
 
 void MainWindow::rebuildLayout() {
@@ -501,7 +573,12 @@ bool MainWindow::handleListClick(const int x, const int y) {
 
 void MainWindow::paintWindow(void* const deviceContext) {
     const Palette& colors = palette();
-    const Rect client{0, 0, layout_.windowWidth, layout_.windowHeight};
+
+    // The real client rect, not the layout size: if the two ever disagree the
+    // paint should follow the window rather than draw off the edge of it.
+    RECT clientBounds{};
+    GetClientRect(static_cast<HWND>(hwnd_), &clientBounds);
+    const Rect client = toRect(clientBounds);
 
     BufferedDC buffer(static_cast<HDC>(deviceContext), client);
     Canvas canvas(buffer.get(), *fonts_, dpi_);
@@ -864,6 +941,13 @@ bool MainWindow::handleMessage(const unsigned int message, const unsigned long l
                 return true;
             }
             return false;
+
+        case kDpiChanged:
+            // wParam carries the new DPI, lParam the rect Windows suggests for
+            // the window on its new monitor.
+            applyDpi(static_cast<int>(HIWORD(wParam)), shownPairs_.size(),
+                     reinterpret_cast<const void*>(lParam));
+            return true;
 
         case WM_SIZE:
             // Minimising tucks the window into the tray instead of the taskbar.

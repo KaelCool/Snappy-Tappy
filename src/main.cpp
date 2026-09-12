@@ -25,6 +25,24 @@ std::wstring widen(const std::string& text) {
     return std::wstring(text.begin(), text.end());
 }
 
+// Per-monitor v2, so the window is laid out for whichever monitor it is on
+// rather than bitmap-stretched from the primary monitor's scaling. Loaded
+// dynamically: the call is Windows 10 1703 and later, and the older
+// SetProcessDPIAware still gets the primary monitor right before that.
+void enableHighDpiAwareness() {
+    using SetContext = BOOL(WINAPI*)(HANDLE);
+    const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    if (user32 != nullptr) {
+        const auto setContext =
+            reinterpret_cast<SetContext>(GetProcAddress(user32, "SetProcessDpiAwarenessContext"));
+        // -4 is DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2.
+        if (setContext != nullptr && setContext(reinterpret_cast<HANDLE>(-4)) != FALSE) {
+            return;
+        }
+    }
+    SetProcessDPIAware();
+}
+
 void reportProblem(const std::wstring& message) {
     MessageBoxW(nullptr, message.c_str(), kAppTitle, MB_OK | MB_ICONERROR);
 }
@@ -46,7 +64,7 @@ void reportConfigWarnings(const ParseResult& loaded, const std::filesystem::path
 }  // namespace
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
-    SetProcessDPIAware();
+    enableHighDpiAwareness();
 
     INITCOMMONCONTROLSEX commonControls{};
     commonControls.dwSize = sizeof(commonControls);

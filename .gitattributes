@@ -1,0 +1,8 @@
+# Normalise text files to LF in the repository regardless of the machine's
+# core.autocrlf. Windows working copies are still checked out with CRLF.
+* text=auto
+
+# Windows shells need CRLF in the file itself, not just in the repository.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

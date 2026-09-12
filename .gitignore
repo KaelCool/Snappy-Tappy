@@ -1,0 +1,5 @@
+# CMake build tree
+build/
+
+# Config written by the app at runtime
+snaptap.cfg

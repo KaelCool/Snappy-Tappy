@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake *)",
+      "Bash(ctest *)",
+      "Bash(powershell -File ./scripts/check.ps1)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(curl *)"
+    ]
+  },
+  "defaultMode": "acceptEdits",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -File ./scripts/check.ps1",
+            "timeout": 300,
+            "statusMessage": "Running build and tests"
+          }
+        ]
+      }
+    ]
+  }
+}

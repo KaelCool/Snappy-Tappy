@@ -13,12 +13,17 @@ add_library(snaptap_core STATIC
 target_include_directories(snaptap_core PUBLIC src)
 
 # The Win32 layer is linked only into the app, never into the tests.
-add_executable(myapp
+# WIN32 makes this a windowed app (wWinMain, no console window).
+add_executable(myapp WIN32
     src/main.cpp
     src/snap_tap/app_paths.cpp
     src/snap_tap/keyboard_hook.cpp
+    src/snap_tap/main_window.cpp
 )
-target_link_libraries(myapp PRIVATE snaptap_core)
+target_link_libraries(myapp PRIVATE snaptap_core comctl32)
+# The app calls the wide-character Win32 API throughout; this also makes the
+# resource macros (IDC_ARROW, IDI_APPLICATION) resolve to their wide forms.
+target_compile_definitions(myapp PRIVATE UNICODE _UNICODE)
 
 enable_testing()
 add_subdirectory(tests)

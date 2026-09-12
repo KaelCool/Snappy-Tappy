@@ -72,6 +72,25 @@ std::optional<KeyCode> keyCodeFromName(const std::string_view name) {
     return std::nullopt;
 }
 
+const std::vector<KeyCode>& allKeys() {
+    // Built once on first use; the contents never change.
+    static const std::vector<KeyCode> keys = [] {
+        std::vector<KeyCode> all;
+        all.reserve(26 + 10 + kNamedKeys.size());
+        for (char letter = 'A'; letter <= 'Z'; ++letter) {
+            all.push_back(static_cast<KeyCode>(letter));
+        }
+        for (char digit = '0'; digit <= '9'; ++digit) {
+            all.push_back(static_cast<KeyCode>(digit));
+        }
+        for (const NamedKey& key : kNamedKeys) {
+            all.push_back(key.code);
+        }
+        return all;
+    }();
+    return keys;
+}
+
 std::string keyNameFromCode(const KeyCode code) {
     if ((code >= 'A' && code <= 'Z') || (code >= '0' && code <= '9')) {
         return std::string(1, static_cast<char>(code));

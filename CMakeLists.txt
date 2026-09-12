@@ -9,6 +9,7 @@ add_library(snaptap_core STATIC
     src/snap_tap/key_codes.cpp
     src/snap_tap/engine.cpp
     src/snap_tap/config.cpp
+    src/snap_tap/layout.cpp
 )
 target_include_directories(snaptap_core PUBLIC src)
 
@@ -19,8 +20,12 @@ add_executable(myapp WIN32
     src/snap_tap/app_paths.cpp
     src/snap_tap/keyboard_hook.cpp
     src/snap_tap/main_window.cpp
+    src/snap_tap/painting.cpp
+    src/snap_tap/theme.cpp
 )
-target_link_libraries(myapp PRIVATE snaptap_core comctl32)
+# gdiplus: antialiased rounded corners, which GDI's RoundRect cannot draw.
+# dwmapi: dark title bar and Windows 11 rounded window corners.
+target_link_libraries(myapp PRIVATE snaptap_core comctl32 gdiplus dwmapi uxtheme)
 # The app calls the wide-character Win32 API throughout; this also makes the
 # resource macros (IDC_ARROW, IDI_APPLICATION) resolve to their wide forms.
 target_compile_definitions(myapp PRIVATE UNICODE _UNICODE)
